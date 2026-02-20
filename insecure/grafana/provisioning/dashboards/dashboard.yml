@@ -1,0 +1,10 @@
+# Grafana dashboard provider — loads JSON dashboards from this directory
+apiVersion: 1
+
+providers:
+  - name: IoT Cyber Range
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    options:
+      path: /etc/grafana/provisioning/dashboards

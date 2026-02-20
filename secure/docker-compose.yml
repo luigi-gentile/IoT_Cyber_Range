@@ -1,0 +1,171 @@
+# =============================================================================
+# Secure IoT Architecture — Docker Compose
+#
+# Network segmentation (three isolated subnets):
+#   iot_device_net  (10.20.1.0/24) — IoT devices and broker only
+#   iot_backend_net (10.20.2.0/24) — broker and backend only
+#   iot_monitor_net (10.20.3.0/24) — IDS passive monitoring
+#
+# The attacker container is placed only on iot_device_net and therefore
+# cannot directly reach the backend — demonstrating effective segmentation.
+# =============================================================================
+networks:
+  iot_device_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.20.1.0/24
+
+  iot_backend_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.20.2.0/24
+
+  iot_monitor_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.20.3.0/24
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # Secure MQTT Broker — mTLS, ACL, no anonymous access
+  # Sits on all three networks as the central communication hub.
+  # ---------------------------------------------------------------------------
+  broker:
+    build: ./broker
+    container_name: secure_broker
+    ports:
+      - "8883:8883"
+    networks:
+      iot_device_net:
+        ipv4_address: 10.20.1.10
+      iot_backend_net:
+        ipv4_address: 10.20.2.10
+      iot_monitor_net:
+        ipv4_address: 10.20.3.10
+    volumes:
+      - ./broker/certs:/mosquitto/certs:ro
+      - ./broker/acl:/mosquitto/config/acl:ro
+
+  # ---------------------------------------------------------------------------
+  # Secure Backend — mTLS to broker, Bearer token on REST API
+  # Isolated on the backend network — unreachable from the device network.
+  # ---------------------------------------------------------------------------
+  backend:
+    build: ./backend
+    container_name: secure_backend
+    environment:
+      BROKER_HOST: 10.20.2.10
+      BROKER_PORT: 8883
+      CA_CERT:     /certs/ca.crt
+      CLIENT_CERT: /certs/backend.crt
+      CLIENT_KEY:  /certs/backend.key
+    ports:
+      - "5001:5000"
+    networks:
+      iot_backend_net:
+        ipv4_address: 10.20.2.20
+    depends_on:
+      - broker
+    volumes:
+      - ./broker/certs:/certs:ro
+
+  # ---------------------------------------------------------------------------
+  # Secure IoT Devices — mTLS, HMAC command auth, rate limiting
+  # ---------------------------------------------------------------------------
+  iot-device-1:
+    build: ./iot-device
+    container_name: secure_device_1
+    environment:
+      DEVICE_ID:        device-001
+      BROKER_HOST:      10.20.1.10
+      BROKER_PORT:      8883
+      CA_CERT:          /certs/ca.crt
+      CLIENT_CERT:      /certs/device-001.crt
+      CLIENT_KEY:       /certs/device-001.key
+      PUBLISH_INTERVAL: 5
+      SENSOR_TYPE:      temperature
+    networks:
+      iot_device_net:
+        ipv4_address: 10.20.1.101
+    volumes:
+      - ./broker/certs:/certs:ro
+    depends_on:
+      - broker
+
+  iot-device-2:
+    build: ./iot-device
+    container_name: secure_device_2
+    environment:
+      DEVICE_ID:        device-002
+      BROKER_HOST:      10.20.1.10
+      BROKER_PORT:      8883
+      CA_CERT:          /certs/ca.crt
+      CLIENT_CERT:      /certs/device-002.crt
+      CLIENT_KEY:       /certs/device-002.key
+      PUBLISH_INTERVAL: 7
+      SENSOR_TYPE:      humidity
+    networks:
+      iot_device_net:
+        ipv4_address: 10.20.1.102
+    volumes:
+      - ./broker/certs:/certs:ro
+    depends_on:
+      - broker
+
+  iot-device-3:
+    build: ./iot-device
+    container_name: secure_device_3
+    environment:
+      DEVICE_ID:        device-003
+      BROKER_HOST:      10.20.1.10
+      BROKER_PORT:      8883
+      CA_CERT:          /certs/ca.crt
+      CLIENT_CERT:      /certs/device-003.crt
+      CLIENT_KEY:       /certs/device-003.key
+      PUBLISH_INTERVAL: 10
+      SENSOR_TYPE:      door_lock
+    networks:
+      iot_device_net:
+        ipv4_address: 10.20.1.103
+    volumes:
+      - ./broker/certs:/certs:ro
+    depends_on:
+      - broker
+
+  # ---------------------------------------------------------------------------
+  # Attacker Container — same scripts as insecure env, attacks will fail
+  # Placed only on iot_device_net — cannot reach backend or monitor networks.
+  # ---------------------------------------------------------------------------
+  attacker:
+    build: ./attacker
+    container_name: secure_attacker
+    networks:
+      iot_device_net:
+        ipv4_address: 10.20.1.200
+    command: tail -f /dev/null
+
+  # ---------------------------------------------------------------------------
+  # Suricata IDS — passive network monitoring with custom IoT rules
+  # Spans all three networks for full traffic visibility.
+  # ---------------------------------------------------------------------------
+  ids:
+    build: ./ids
+    container_name: secure_ids
+    networks:
+      iot_device_net:
+        ipv4_address: 10.20.1.250
+      iot_backend_net:
+        ipv4_address: 10.20.2.250
+      iot_monitor_net:
+        ipv4_address: 10.20.3.250
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    volumes:
+      - ./ids/rules:/etc/suricata/rules/custom:ro
+      - ./ids/logs:/var/log/suricata
+    restart: unless-stopped

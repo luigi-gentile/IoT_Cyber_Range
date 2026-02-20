@@ -1,0 +1,190 @@
+# =============================================================================
+# Insecure IoT Architecture - Docker Compose
+#
+# All services share a single flat network (10.10.0.0/24), which means any
+# container can reach any other container — a realistic but dangerous topology
+# commonly found in real-world IoT deployments.
+#
+# Port mappings (host -> container):
+#   1883  -> MQTT broker (plaintext)
+#   5050  -> Backend REST API (unauthenticated)
+#   8000  -> Prometheus metrics exporter
+#   9090  -> Prometheus UI
+#   3000  -> Grafana dashboard
+# =============================================================================
+networks:
+  iot_flat_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.10.0.0/24
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # Mosquitto MQTT Broker
+  # Vulnerability: anonymous access, no TLS, no ACL.
+  # Any client on the network can connect and subscribe to any topic.
+  # ---------------------------------------------------------------------------
+  broker:
+    build: ./broker
+    container_name: insecure_broker
+    ports:
+      - "1883:1883"   # MQTT plaintext
+      - "9001:9001"   # WebSocket (for browser-based MQTT clients)
+    networks:
+      iot_flat_net:
+        ipv4_address: 10.10.0.10
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Backend REST API
+  # Vulnerability: no authentication on any endpoint, all sensor data exposed.
+  # Port 5050 on the host maps to Flask's internal port 5000.
+  # ---------------------------------------------------------------------------
+  backend:
+    build: ./backend
+    container_name: insecure_backend
+    environment:
+      BROKER_HOST: 10.10.0.10
+      BROKER_PORT: 1883
+    ports:
+      - "5050:5000"
+    networks:
+      iot_flat_net:
+        ipv4_address: 10.10.0.20
+    depends_on:
+      - broker
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # IoT Device Simulators
+  # Three devices publishing sensor data at different intervals.
+  # Vulnerability: accept any command without signature validation.
+  # ---------------------------------------------------------------------------
+  iot-device-1:
+    build: ./iot-device
+    container_name: insecure_device_1
+    environment:
+      DEVICE_ID: device-001
+      BROKER_HOST: 10.10.0.10
+      BROKER_PORT: 1883
+      PUBLISH_INTERVAL: 5       # seconds between sensor readings
+      SENSOR_TYPE: temperature
+    networks:
+      iot_flat_net:
+        ipv4_address: 10.10.0.101
+    depends_on:
+      - broker
+
+  iot-device-2:
+    build: ./iot-device
+    container_name: insecure_device_2
+    environment:
+      DEVICE_ID: device-002
+      BROKER_HOST: 10.10.0.10
+      BROKER_PORT: 1883
+      PUBLISH_INTERVAL: 7
+      SENSOR_TYPE: humidity
+    networks:
+      iot_flat_net:
+        ipv4_address: 10.10.0.102
+    depends_on:
+      - broker
+
+  iot-device-3:
+    build: ./iot-device
+    container_name: insecure_device_3
+    environment:
+      DEVICE_ID: device-003
+      BROKER_HOST: 10.10.0.10
+      BROKER_PORT: 1883
+      PUBLISH_INTERVAL: 10
+      SENSOR_TYPE: door_lock
+    networks:
+      iot_flat_net:
+        ipv4_address: 10.10.0.103
+    depends_on:
+      - broker
+
+  # ---------------------------------------------------------------------------
+  # Attacker Container
+  # Pre-loaded with offensive scripts for MQTT sniffing, command injection,
+  # data poisoning, and lateral movement demonstrations.
+  # Results are saved to ./results/ on the host via volume mount.
+  # ---------------------------------------------------------------------------
+  attacker:
+    build: ./attacker
+    container_name: insecure_attacker
+    volumes:
+      - ./results:/attacks/results   # persist attack output to host
+    networks:
+      iot_flat_net:
+        ipv4_address: 10.10.0.200
+    depends_on:
+      - broker
+      - backend
+    command: tail -f /dev/null       # keep container alive for docker exec
+
+  # ---------------------------------------------------------------------------
+  # Prometheus Metrics Exporter
+  # Subscribes to all MQTT topics and exposes metrics in Prometheus format.
+  # Detects anomalies (data poisoning, unauthorized commands) in real time.
+  # ---------------------------------------------------------------------------
+  exporter:
+    build: ./exporter
+    container_name: insecure_exporter
+    environment:
+      BROKER_HOST: 10.10.0.10
+      BROKER_PORT: 1883
+    ports:
+      - "8000:8000"
+    networks:
+      iot_flat_net:
+        ipv4_address: 10.10.0.210
+    depends_on:
+      - broker
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Prometheus Time-Series Database
+  # Scrapes metrics from the exporter every 5 seconds.
+  # UI available at http://localhost:9090
+  # ---------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: insecure_prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    networks:
+      iot_flat_net:
+        ipv4_address: 10.10.0.211
+    depends_on:
+      - exporter
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Grafana Visualization
+  # Pre-configured with IoT security dashboard via provisioning.
+  # UI available at http://localhost:3000 (admin / thesis2024)
+  # ---------------------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:latest
+    container_name: insecure_grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: thesis2024
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      iot_flat_net:
+        ipv4_address: 10.10.0.212
+    depends_on:
+      - prometheus
+    restart: unless-stopped

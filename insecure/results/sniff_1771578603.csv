@@ -1,0 +1,18 @@
+timestamp,topic,qos,retain,payload,size_bytes
+1771578573.2470472,iot/device-001/status,0,1,"{""status"": ""online"", ""device"": ""device-001""}",44
+1771578573.2470884,iot/device-003/status,0,1,"{""status"": ""online"", ""device"": ""device-003""}",44
+1771578573.2471037,iot/device-002/status,0,1,"{""status"": ""online"", ""device"": ""device-002""}",44
+1771578573.3865376,iot/device-001/data,0,0,"{""device_id"": ""device-001"", ""sensor"": ""temperature"", ""timestamp"": 1771578573.3856475, ""value"": 21.3, ""unit"": ""C""}",113
+1771578575.8145962,iot/device-002/data,0,0,"{""device_id"": ""device-002"", ""sensor"": ""humidity"", ""timestamp"": 1771578575.8130481, ""value"": 36.09, ""unit"": ""%""}",111
+1771578578.3934011,iot/device-001/data,0,0,"{""device_id"": ""device-001"", ""sensor"": ""temperature"", ""timestamp"": 1771578578.3918567, ""value"": 32.83, ""unit"": ""C""}",114
+1771578582.6953948,iot/device-003/data,0,0,"{""device_id"": ""device-003"", ""sensor"": ""door_lock"", ""timestamp"": 1771578582.6939692, ""value"": ""locked"", ""unit"": ""state""}",119
+1771578582.8194473,iot/device-002/data,0,0,"{""device_id"": ""device-002"", ""sensor"": ""humidity"", ""timestamp"": 1771578582.8185146, ""value"": 69.39, ""unit"": ""%""}",111
+1771578583.3992953,iot/device-001/data,0,0,"{""device_id"": ""device-001"", ""sensor"": ""temperature"", ""timestamp"": 1771578583.397998, ""value"": 18.94, ""unit"": ""C""}",113
+1771578588.4022963,iot/device-001/data,0,0,"{""device_id"": ""device-001"", ""sensor"": ""temperature"", ""timestamp"": 1771578588.4011142, ""value"": 26.69, ""unit"": ""C""}",114
+1771578589.8242416,iot/device-002/data,0,0,"{""device_id"": ""device-002"", ""sensor"": ""humidity"", ""timestamp"": 1771578589.8227384, ""value"": 50.64, ""unit"": ""%""}",111
+1771578592.6996777,iot/device-003/data,0,0,"{""device_id"": ""device-003"", ""sensor"": ""door_lock"", ""timestamp"": 1771578592.6985846, ""value"": ""locked"", ""unit"": ""state""}",119
+1771578593.4046843,iot/device-001/data,0,0,"{""device_id"": ""device-001"", ""sensor"": ""temperature"", ""timestamp"": 1771578593.4032817, ""value"": 22.88, ""unit"": ""C""}",114
+1771578596.83056,iot/device-002/data,0,0,"{""device_id"": ""device-002"", ""sensor"": ""humidity"", ""timestamp"": 1771578596.8290446, ""value"": 46.83, ""unit"": ""%""}",111
+1771578598.4073503,iot/device-001/data,0,0,"{""device_id"": ""device-001"", ""sensor"": ""temperature"", ""timestamp"": 1771578598.4059525, ""value"": 34.68, ""unit"": ""C""}",114
+1771578602.7064967,iot/device-003/data,0,0,"{""device_id"": ""device-003"", ""sensor"": ""door_lock"", ""timestamp"": 1771578602.7049541, ""value"": ""locked"", ""unit"": ""state""}",119
+1771578603.4139361,iot/device-001/data,0,0,"{""device_id"": ""device-001"", ""sensor"": ""temperature"", ""timestamp"": 1771578603.4123647, ""value"": 31.33, ""unit"": ""C""}",114

@@ -1,0 +1,24 @@
+# =============================================================================
+# Mosquitto ACL — Principle of Least Privilege
+#
+# Each identity (derived from the client certificate CN) is granted only the
+# minimum topic permissions required for its role.
+#
+# Pattern substitution: %u expands to the authenticated username (cert CN).
+# This ensures each device can only publish to its own topics.
+# =============================================================================
+
+# Backend: read-only access to all device data
+user backend
+topic read iot/#
+topic read $SYS/#
+
+# IDS monitor: passive read-only access to all traffic
+user ids-monitor
+topic read #
+
+# IoT devices: each device can only write its own data/status topics
+# and read its own command topic — lateral movement via MQTT is impossible
+pattern write iot/%u/data
+pattern write iot/%u/status
+pattern read  iot/%u/cmd

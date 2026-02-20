@@ -1,0 +1,13 @@
+{
+  "attack_start": 1771578693.095681,
+  "commands_sent": 9,
+  "devices_compromised": [
+    "device-001",
+    "device-003",
+    "device-002"
+  ],
+  "data_poisoned": 3,
+  "lateral_targets": 3,
+  "attack_end": 1771578707.8410518,
+  "duration_s": 14.745370864868164
+}
